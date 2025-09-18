@@ -1,0 +1,15 @@
+Description: Use packaged jQuery.
+Author: Bas Couwenberg <sebastic@debian.org>
+Forwarded: not-needed
+
+--- a/man/build_html.py
++++ b/man/build_html.py
+@@ -372,7 +372,7 @@ headerkey_tmpl = string.Template(
+ headerpso_tmpl = r"""
+ <link rel="stylesheet" href="grassdocs.css" type="text/css">
+ <link rel="stylesheet" href="parser_standard_options.css" type="text/css">
+-<script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
++<script src="jquery/jquery.min.js"></script>
+ <script type="text/javascript" src="jquery.fixedheadertable.min.js"></script>
+ <script type="text/javascript" src="parser_standard_options.js"></script>
+ </head>

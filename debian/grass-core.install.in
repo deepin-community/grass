@@ -1,0 +1,13 @@
+usr/bin/grass
+usr/bin/x-grass
+usr/lib/grass@VERSION@/bin
+usr/lib/grass@VERSION@/demolocation
+usr/lib/grass@VERSION@/driver
+usr/lib/grass@VERSION@/etc
+usr/lib/grass@VERSION@/fonts
+usr/lib/grass@VERSION@/lib
+usr/lib/grass@VERSION@/locale
+usr/lib/grass@VERSION@/scripts
+usr/share/applications
+usr/share/metainfo
+usr/share/icons/hicolor

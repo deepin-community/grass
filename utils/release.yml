@@ -1,0 +1,47 @@
+---
+notes:
+  categories:
+    - title: Modules
+      regexp: '((d|db|g|i|m|ps|r|r3|t|v)\.[^ ]*)(, (d|db|g|i|m|ps|r|r3|t|v)\.[^ ]*)?: |(modules|tools|temporal): '
+
+    - title: Graphical User Interface
+      regexp: '(wxGUI.*|gui|GUI): '
+
+    - title: Python
+      regexp: '(grass\.[^ ]*|libpython.*|pythonlib.*|ctypesgen|ctypes|[Pp]ython|[Bb]inder): '
+
+    - title: Documentation and Messages
+      regexp: '(docs?|man|manual|manual pages|[Ss]phinx|mkhtml|messages?): '
+
+    - title: Libraries and General Functionality
+      regexp: '(grass_|lib|TGIS|tgis|raster|vector)[^ ]*: '
+
+    - title: Startup, Initialization, and Environment
+      regexp: '(init|startup): '
+
+    - title: Translations, Internationalization, and Localization
+      regexp: '(i18n|i18N|L10n|L10N|t9n|translations?): |Translations update from '
+
+    - title: Windows
+      regexp: '(winGRASS|win|[Ww]indows): '
+
+    - title: Packaging, Configuration, Portability, and Compilation
+      regexp: '(packaging|pkg|rpm|deb|pkg-config|configure|config|[Mm]ake|build): '
+
+    - title: Docker
+      regexp: '[Dd]ocker(/[^ ]+)?(\(\w[\w.-]*\))?: '
+
+    - title: Singularity
+      regexp: '[Ss]ingularity(\(\w[\w.-]*\))?: '
+
+    - title: Continuous Integration, Infrastructure, Tests and Code Quality
+      regexp: '(CI|ci|[Tt]ests|[Cc]hecks|style|perf|CQ|[Rr]efactoring|utils|pytest|unittest)(\(\w[\w.-]*\))?: '
+
+    - title: Contributing and Management
+      regexp: '(contributing|CONTRIBUTING.md|contributors|contributors.csv): '
+
+  exclude:
+    regexp:
+      - '[Hh]appy [Nn]ew [Yy]ear'
+      - 'version: '
+      - 'RFC: '
