@@ -1,3 +1,9 @@
+grass (8.4.1-1deepin1) unstable; urgency=medium
+
+  * rebuild for numpy.
+
+ -- lhdjply <lhdjply@126.com>  Thu, 18 Sep 2025 14:38:23 +0800
+
 grass (8.4.1-1) unstable; urgency=medium
 
   * New upstream release.
