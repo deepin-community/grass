@@ -1,0 +1,14 @@
+#!/bin/sh
+
+cat <<DIRS
+usr/share/grass82/gui/icons  usr/lib/grass82/gui/icons
+usr/share/grass82/gui/images usr/lib/grass82/gui/images
+DIRS
+
+if [ -e debian/grass-gui.image-file-in-usr-lib.list ]; then \
+        while read file; do \
+		share=`echo "$file" | sed 's/debian\/tmp\/usr\/lib\//usr\/share\//'` ; \
+		lib=`echo "$file" | sed 's/debian\/tmp\///'` ; \
+		echo "$share $lib" ; \
+	done < debian/grass-gui.image-file-in-usr-lib.list ; \
+fi

@@ -1,0 +1,8 @@
+usr/share/man/man1/grass.1grass.gz              usr/share/man/man1/x-grass.1grass.gz
+usr/share/doc/grass-core/AUTHORS                usr/lib/grass@VERSION@/AUTHORS
+usr/share/doc/grass-core/CITING                 usr/lib/grass@VERSION@/CITING
+usr/share/doc/grass-core/COPYING                usr/lib/grass@VERSION@/COPYING
+usr/share/doc/grass-core/contributors.csv       usr/lib/grass@VERSION@/contributors.csv
+usr/share/doc/grass-core/contributors_extra.csv usr/lib/grass@VERSION@/contributors_extra.csv
+usr/share/doc/grass-core/translators.csv        usr/lib/grass@VERSION@/translators.csv
+usr/share/common-licenses/GPL-2                 usr/lib/grass@VERSION@/GPL.TXT

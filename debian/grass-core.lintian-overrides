@@ -1,0 +1,25 @@
+# False positive, file is an executable not an image
+image-file-in-usr-lib [usr/lib/grass*/bin/r.in.png]
+image-file-in-usr-lib [usr/lib/grass*/bin/r.out.png]
+
+# Build uses -D_FORTIFY_SOURCE=2, but hardening-check reports:
+#  Fortify Source functions: no, only unprotected functions found!
+hardening-no-fortify-functions *
+
+# This license file is used by the program to show license, so needs to be
+# distributed.
+extra-license-file [usr/lib/grass*/etc/license]
+extra-license-file [usr/share/doc/grass-core/COPYING]
+
+# Not a problem
+package-contains-documentation-outside-usr-share-doc *
+
+# https://trac.osgeo.org/grass/ticket/3786
+file-references-package-build-path
+
+# Not a problem
+package-contains-empty-directory [usr/lib/grass*/demolocation/PERMANENT/*]
+
+# Not a problem
+library-not-linked-against-libc [usr/lib/grass*/lib/libgrass_dbstubs*.so]
+

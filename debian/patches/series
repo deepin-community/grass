@@ -1,0 +1,5 @@
+pager
+instdir
+no-fail-html.patch
+jquery.patch
+spelling-errors.patch

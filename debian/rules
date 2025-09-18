@@ -1,4 +1,235 @@
 #!/usr/bin/make -f
 
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# Enable hardening build flags
+export DEB_BUILD_MAINT_OPTIONS=hardening=+all
+
+VERSION=$(shell echo `head -2 $(CURDIR)/include/VERSION` | sed -e 's/ //')
+ABI=$(shell echo `head -3 $(CURDIR)/include/VERSION` | sed -e 's/ //g' -e 's/RC/-/')
+GRASS_ABI=grass$(ABI)
+BASE_NAME=grass$(VERSION)
+PKG_NAME=grass
+
+# TODO: fix these
+CFLAGS+=-Wno-error=format-security
+
+CFLAGS+=-Wall
+
+CFLAGS+=-DNDEBUG
+
+TEMPLATES=$(wildcard debian/*.in)
+
+# Use SOURCE_DATE_EPOCH as random seed for reproducible builds
+ifdef SOURCE_DATE_EPOCH
+	export GRASS_RANDOM_SEED=$(SOURCE_DATE_EPOCH)
+endif
+
+versions:
+	@echo "Version: $(VERSION)"
+	@echo "ABI: $(ABI)"
+
+templates:
+	for TEMPLATE in $(TEMPLATES) ; do \
+	    sed -e 's/@VERSION@/$(VERSION)/g' -e 's/@ABI@/$(ABI)/g' $$TEMPLATE > `echo $$TEMPLATE | sed 's/.in$$//'` ; \
+	done
+
 %:
 	dh $@
+
+execute_after_dh_clean:
+	$(RM) lib/proj/nad2bin
+	$(RM) utils/timer/main.o
+	$(RM) raster/r.terraflow/IOStream/lib/src/libiostream.a
+	$(RM) debian/$(BASE_NAME).1
+	$(RM) debian/grass-gui.image-file-in-usr-lib.list
+	$(RM) error.log
+
+	# clean doxygen documentation (programming man)
+	$(RM) doxygen_sqlite3.db lib/doxygen_sqlite3.db
+	$(RM) -r \
+		doxygenhtml \
+		html latex \
+		rfc/html rfc/latex \
+		lib/html lib/latex \
+		gui/wxpython/html gui/wxpython/latex
+	for LIBRARY in \
+		db \
+		g3d \
+		gis \
+		gmath \
+		gpde \
+		ogsf \
+		proj \
+		python \
+		segment \
+		vector \
+		vector/dglib ; \
+	do \
+		$(RM) -r lib/$$LIBRARY/html lib/$$LIBRARY/latex ; \
+	done
+
+override_dh_auto_clean:
+	[ ! -f $(CURDIR)/include/Make/Platform.make ] || $(MAKE) distclean
+
+override_dh_auto_configure: templates
+	dh_auto_configure -- \
+                    --prefix=/usr/lib \
+                    --enable-largefile \
+                    --enable-socket \
+                    --enable-shared \
+                    --with-blas \
+                    --with-bzlib \
+                    --with-cairo \
+                    --with-cxx \
+                    --with-freetype \
+                    --with-freetype-includes=/usr/include/freetype2 \
+                    --with-gdal \
+                    --with-geos \
+                    --with-lapack \
+                    --with-motif \
+                    --with-mysql \
+                    --with-mysql-includes="$(shell mysql_config --include | sed -e 's/-I//g')" \
+                    --with-netcdf \
+                    --with-nls \
+                    --with-odbc \
+                    --with-openmp \
+                    --with-pdal=no \
+                    --with-postgres \
+                    --with-postgres-includes=$(shell pg_config --includedir) \
+                    --with-proj-share=/usr/share/proj \
+                    --with-python \
+                    --with-readline \
+                    --with-sqlite \
+                    --with-x \
+                    --with-zstd
+
+execute_after_dh_auto_build:
+	chmod 755 debian/fixpaths.sh
+
+	# generate the Programmers' manual (in HTML)
+	$(MAKE) htmldocs-single
+
+	# Strip build path
+	sed -i "s@$(CURDIR)@@g" lib/html/search/*.js
+
+override_dh_auto_install:
+	# install grass core into debian/tmp
+	dh_auto_install -- \
+		INST_DIR=/usr/lib/$(BASE_NAME) \
+		UNIX_BIN=/usr/bin
+
+	# fix links
+	debian/fixpaths.sh $(CURDIR)/debian/tmp debian/tmp
+
+	# delete python compiled bytecode files (maybe dh_python2 takes care of this for us?)
+	find debian/tmp/ -type f -name "*.pyc" -delete
+	find debian/tmp/ -type d -name "__pycache__" -delete
+
+	# change section from 1 to .1grass
+	for m in debian/tmp/usr/lib/$(BASE_NAME)/docs/man/man1/*.1; do \
+		n=`basename $$m .1`; mv $$m debian/tmp/usr/lib/$(BASE_NAME)/docs/man/man1/$$n.1grass; done
+	for m in debian/tmp/usr/lib/$(BASE_NAME)/docs/man/man1/*.1grass; do \
+		sed -i -e 's/^.TH \(.*\) 1/.TH \1 1grass/' "$$m"; done
+
+	# escape minus signs which are command line options not hyphens
+	for m in debian/tmp/usr/lib/$(BASE_NAME)/docs/man/man1/*.1grass; do \
+		sed -i -e 's/\([ ([]\)-\([a-z]\)/\1\\-\2/g' \
+			-e 's/\([ []\)--\([a-z]\)/\1\\-\\-\2/g' \
+			-e 's/\[-\\fB/[\\-\\fB/' \
+			-e 's/\[--\\fB/[\\-\\-\\fB/g' \
+			-e 's/"\\fB-\([a-zA-Z0-9]\)/"\\fB\\-\1/' \
+			-e 's/"\\fB--\([a-zA-Z0-9]\)/"\\fB\\-\\-\1/' \
+			-e 's/\\fI-\([a-zA-Z0-9]\)/\\fI\-\1/g' \
+			"$$m"; done
+
+	# adjust from build-server build dir to end-user's install dir
+	sed -i -e "s+^\(GRASS_HOME[ ]*=\) .*+\1 /usr/lib/$(BASE_NAME)+" \
+		-e "s+^\(RUN_GISBASE[ ]*=\) .*+\1 /usr/lib/$(BASE_NAME)+" \
+		debian/tmp/usr/lib/$(BASE_NAME)/include/Make/Platform.make
+
+	# install pkg-config file
+	mkdir -p debian/$(PKG_NAME)-dev/usr/share/pkgconfig
+	install -m 644 grass.pc debian/$(PKG_NAME)-dev/usr/share/pkgconfig/$(BASE_NAME).pc
+
+	# install icons and desktop file
+	mkdir -p debian/tmp/usr/share/icons
+	mv debian/tmp/usr/lib/$(BASE_NAME)/share/icons/hicolor debian/tmp/usr/share/icons
+
+	mkdir -p debian/tmp/usr/share/applications
+	mv debian/tmp/usr/lib/$(BASE_NAME)/share/applications/grass.desktop debian/tmp/usr/share/applications/$(BASE_NAME).desktop
+
+	# install AppStream metadata
+	mkdir -p debian/tmp/usr/share/metainfo
+	mv debian/tmp/usr/lib/$(BASE_NAME)/share/metainfo/org.osgeo.grass.appdata.xml debian/tmp/usr/share/metainfo/org.osgeo.grass.appdata.xml
+
+	# install grass wrapper scripts
+	install -m 755 debian/x-grass debian/tmp/usr/bin/x-grass
+
+	# Remove files not installed or installed by debhelper
+	$(RM) -r debian/tmp/usr/lib/$(BASE_NAME)/AUTHORS \
+	         debian/tmp/usr/lib/$(BASE_NAME)/CITING \
+	         debian/tmp/usr/lib/$(BASE_NAME)/COPYING \
+	         debian/tmp/usr/lib/$(BASE_NAME)/GPL.TXT \
+	         debian/tmp/usr/lib/$(BASE_NAME)/INSTALL.md \
+	         debian/tmp/usr/lib/$(BASE_NAME)/REQUIREMENTS.md \
+	         debian/tmp/usr/lib/$(BASE_NAME)/config.status \
+	         debian/tmp/usr/lib/$(BASE_NAME)/contributors.csv \
+	         debian/tmp/usr/lib/$(BASE_NAME)/contributors_extra.csv \
+	         debian/tmp/usr/lib/$(BASE_NAME)/demolocation/PERMANENT/.tmp/* \
+	         debian/tmp/usr/lib/$(BASE_NAME)/translation_status.json \
+	         debian/tmp/usr/lib/$(BASE_NAME)/translators.csv
+
+	# Move image files from /usr/lib/$(BASE_NAME) to /usr/share/$(BASE_NAME)
+	mkdir -p debian/tmp/usr/share/$(BASE_NAME)/gui
+	mv debian/tmp/usr/lib/$(BASE_NAME)/gui/icons/  debian/tmp/usr/share/$(BASE_NAME)/gui/
+	mv debian/tmp/usr/lib/$(BASE_NAME)/gui/images/ debian/tmp/usr/share/$(BASE_NAME)/gui/
+
+	find debian/tmp/usr/lib/$(BASE_NAME)/gui/wxpython/ -type f \( -name "*.jpg" -or -name "*.png" \) -print | sort > debian/grass-gui.image-file-in-usr-lib.list
+
+	while read file; do \
+		dir=`dirname "$$file" | sed 's/usr\/lib\//usr\/share\//'` ; \
+		if [ ! -e "$$dir" ]; then \
+			mkdir -p "$$dir" ; \
+		fi ; \
+		mv "$$file" "$$dir" ; \
+	done < debian/grass-gui.image-file-in-usr-lib.list
+
+	# Remove empty files
+	find debian/tmp/ -type f -empty -name "class_graphical*" -print -delete
+
+execute_before_dh_install:
+	# Strip binaries
+	strip --strip-unneeded --remove-section=.comment --remove-section=.note debian/tmp/usr/lib/$(BASE_NAME)/bin/r.in.png
+	strip --strip-unneeded --remove-section=.comment --remove-section=.note debian/tmp/usr/lib/$(BASE_NAME)/bin/r.out.png
+
+execute_after_dh_install:
+	# delete duplicated grass-gui stuff from grass-core package
+	for COMPONENT in gui wxpython; do \
+		rm -rf debian/$(PKG_NAME)-core/usr/lib/$(BASE_NAME)/$$COMPONENT; \
+	done
+
+override_dh_python3:
+	dh_python3 -pgrass-core -pgrass-gui -pgrass-dev
+	dh_python3 -pgrass-core /usr/lib/$(BASE_NAME)/etc/
+	dh_python3 -pgrass-core /usr/lib/$(BASE_NAME)/scripts/
+	dh_python3 -pgrass-gui /usr/lib/$(BASE_NAME)/gui/
+	dh_python3 -pgrass-dev /usr/lib/$(BASE_NAME)/utils/
+
+override_dh_numpy3:
+	dh_numpy3 -pgrass-core -pgrass-gui
+
+override_dh_shlibdeps:
+	dh_shlibdeps -l$(CURDIR)/debian/tmp/usr/lib/$(BASE_NAME)/lib
+
+override_dh_compress:
+	dh_compress -XAUTHORS
+
+override_dh_fixperms:
+	dh_fixperms -Xr.in.png -Xr.out.png
+
+override_dh_gencontrol:
+	dh_gencontrol -- -Vgrass:Provides="$(GRASS_ABI)"
+
+.PHONY: templates versions
